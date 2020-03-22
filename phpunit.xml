@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<phpunit colors="true">
+    <testsuites>
+        <testsuite name="Database Test Suite">
+            <directory>
+                ./tests
+            </directory>
+        </testsuite>
+    </testsuites>
+    <logging>
+        <log type="coverage-html" target="./tests/coverage" />
+    </logging>
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">
+                ./src
+            </directory>
+        </whitelist>
+    </filter>
+</phpunit>
