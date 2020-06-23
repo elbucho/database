@@ -8,6 +8,7 @@ different database connections in one callable object, and gives you a streamlin
 The Database class is instantiated by passing it an Elbucho\Config object with one or more DSNs in it.
 See the elbucho/config documentation for instructions on how to place and read in your config files.
 
+### DSNs
 Database connections must be stored in the "dsns" key of your Config object, and each must have the below
 required keys.  You can include multiple connections in one Config object.
 
@@ -21,12 +22,19 @@ The required keys for each database connection are:
 Additionally, the optional key "port" can be specified with the port number your database server is running on.
 This defaults to 3306.
 
+### Default Handle
 If your config file only contains information for one database connection, the Database object will set the handle
 for this connection to "default".  If you have multiple connections, each connection must be prefaced with the
 handle name for that connection.
 
+You can override the default handle name by specifying a 'default_handle' key in your config:
+
+```
+default_handle: foobar
+```
+
 Below are two sample .yml files. This first one shows a singular connection, and it will be automatically 
-assigned the handle "default".
+assigned the default handle.
 
 ```
 dsns:
@@ -102,4 +110,4 @@ var_dump($lastId);
 // int(12345)
 ```
 
-Again, if the handle is left out, it will default to "default".
+Again, if the handle is left out, it will use whatever your default handle is set to.
