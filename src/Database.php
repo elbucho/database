@@ -50,10 +50,7 @@ class Database
      */
     public function __construct(Config $config)
     {
-        if (isset($config->{'default_handle'}) and is_string($config->{'default_handle'})) {
-            $this->defaultHandle = $config->{'default_handle'};
-        }
-
+        $this->defaultHandle = $config->get('default_handle', 'default');
         $this->connections = $this->loadFromConfig($config);
 
         return $this;
@@ -92,10 +89,14 @@ class Database
                 }
             }
 
-            return ['default' => $this->createClosureFromConfig($config->{'dsns'})];
+            return [
+                $this->defaultHandle => $this->createClosureFromConfig($config->{'dsns'})
+            ];
         }
 
-        return ['default' => $this->createClosureFromConfig($config)];
+        return [
+            $this->defaultHandle => $this->createClosureFromConfig($config)
+        ];
     }
 
     /**
@@ -194,6 +195,7 @@ class Database
      */
     public function query($statement, array $params = array(), $handle = null)
     {
+        $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
         /* @var PDOStatement $sth */
@@ -214,6 +216,7 @@ class Database
      */
     public function exec($statement, array $params = array(), $handle = null)
     {
+        $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
         /* @var PDOStatement $sth */
@@ -230,6 +233,7 @@ class Database
      */
     public function getLastInsertId($handle = null): int
     {
+        $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
         return (int) $this->connections[$handle]()->lastInsertId();
