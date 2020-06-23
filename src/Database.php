@@ -69,22 +69,33 @@ class Database
      */
     private function loadFromConfig(Config $config): array
     {
-        // Determine if multiple DSNs exist in Config
-        if (isset($config->{'dsns'}) and
-            is_object($config->{'dsns'}) and
-            $config->{'dsns'} instanceof Config and
-            $config->{'dsns'}->count() > 0)
-        {
-            $dsns = array();
+        /**
+         * Determine if the the dsns key exists, and if it contains
+         * multiple DSNs or a singular one
+         */
+        if (isset($config->{'dsns'}) and $config->{'dsns'} instanceof Config) {
+            if ($config->{'dsns'}->count() > 0) {
+                $dsns = array();
 
-            foreach ($config->{'dsns'} as $key => $value) {
-                $dsns[$key] = $this->createClosureFromConfig($value);
+                foreach ($config->{'dsns'} as $key => $value) {
+                    if ($value instanceof Config) {
+                        try {
+                            $dsns[$key] = $this->createClosureFromConfig($value);
+                        } catch (InvalidConfigException $e) {
+                            continue;
+                        }
+                    }
+                }
+
+                if ( ! empty($dsns)) {
+                    return $dsns;
+                }
             }
 
-            return $dsns;
+            return ['default' => $this->createClosureFromConfig($config->{'dsns'})];
         }
 
-        return array('default' => $this->createClosureFromConfig($config));
+        return ['default' => $this->createClosureFromConfig($config)];
     }
 
     /**
