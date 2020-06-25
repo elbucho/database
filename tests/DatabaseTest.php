@@ -1,5 +1,6 @@
 <?php
 
+/** @noinspection PhpIllegalPsrClassPathInspection */
 namespace Elbucho\Database\Tests;
 use Elbucho\Config\InvalidFileException;
 use Elbucho\Config\Loader\File\IniFileLoader;
@@ -68,7 +69,7 @@ class DatabaseTest extends TestCase
 
         $PDOMock = $this->getMockBuilder('Elbucho\Database\Tests\PDOMock')
             ->setConstructorArgs(['mysql:hostname=localhost;dbname=test;charset=utf8'])
-            ->setMethods(['prepare', 'lastInsertId'])
+            ->setMethods(['prepare', 'lastInsertId', 'setAttribute'])
             ->getMock();
 
         $PDOStatement = $this->getMockBuilder('\PDOStatement')
@@ -103,6 +104,11 @@ class DatabaseTest extends TestCase
                     return rand(0, 15);
                 })
             );
+
+        $PDOMock
+            ->expects($this->any())
+            ->method('setAttribute')
+            ->willReturn(true);
 
         $this->database = new Database($config);
         $this->database->useMockDriver($PDOMock);
@@ -279,6 +285,24 @@ class DatabaseTest extends TestCase
         }
 
         $this->assertFalse($error);
+    }
+
+    /**
+     * Test the setAttribute command
+     *
+     * @access  public
+     * @param   void
+     * @return  void
+     */
+    public function testSetAttribute()
+    {
+        $this->assertTrue(
+            $this->database->setAttribute(
+                \PDO::ATTR_ERRMODE,
+                \PDO::ERRMODE_EXCEPTION,
+                'test1'
+            )
+        );
     }
 
     /**

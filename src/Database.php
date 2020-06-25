@@ -240,6 +240,23 @@ class Database
     }
 
     /**
+     * Set the PDO attributes for a given handle
+     *
+     * @access  public
+     * @param   int     $attribute
+     * @param   mixed   $value
+     * @param   string  $handle
+     * @return  bool
+     */
+    public function setAttribute(int $attribute, $value, string $handle = null): bool
+    {
+        $handle = (is_null($handle) ? $this->defaultHandle : $handle);
+        $this->testHandle($handle);
+
+        return $this->connections[$handle]()->setAttribute($attribute, $value);
+    }
+
+    /**
      * Import a mock PDO library for testing
      *
      * @access  public

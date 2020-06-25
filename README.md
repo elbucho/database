@@ -111,3 +111,15 @@ var_dump($lastId);
 ```
 
 Again, if the handle is left out, it will use whatever your default handle is set to.
+
+## Setting Attributes
+You can set PDO attributes on a given connection via the setAttribute method.  This works identically
+to the PDO setAttribute method, with the exception that a handle is also passed:
+
+```
+$attribute = \PDO::ATTR_ERRMODE;
+$value = \PDO::ERRMODE_EXCEPTION;
+$handle = 'default';
+
+$database->setAttribute($attribute, $value, $handle)
+```
