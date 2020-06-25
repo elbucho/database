@@ -2,9 +2,6 @@
 
 namespace Elbucho\Database;
 use Elbucho\Config\Config;
-use PDO;
-use PDOException;
-use PDOStatement;
 use Closure;
 
 /**
@@ -20,7 +17,7 @@ class Database
      * PDO drivers
      *
      * @access  private
-     * @var     PDO[]
+     * @var     \PDO[]
      */
     private $connections = array();
 
@@ -36,7 +33,7 @@ class Database
      * Mock driver to use instead of a new PDO instance
      *
      * @access  private
-     * @var     PDO
+     * @var     \PDO
      */
     private $mockDriver;
 
@@ -132,7 +129,7 @@ class Database
                 return $this->mockDriver;
             }
 
-            return new PDO($dsn, $config->{'user'}, $config->{'pass'});
+            return new \PDO($dsn, $config->{'user'}, $config->{'pass'});
         };
     }
 
@@ -142,7 +139,7 @@ class Database
      * @access  private
      * @param   string  $handle
      * @return  void
-     * @throws  PDOException
+     * @throws  \PDOException
      */
     private function testHandle($handle = null)
     {
@@ -150,11 +147,19 @@ class Database
             $handle = $this->defaultHandle;
         }
 
-        if ( ! array_key_exists($handle, $this->connections) or
-            ! is_object($this->connections[$handle]) or
-            ! $this->connections[$handle] instanceof Closure)
-        {
-            throw new PDOException(sprintf(
+        if ( ! array_key_exists($handle, $this->connections)) {
+            throw new \PDOException(sprintf(
+                'Invalid handle: %s',
+                $handle
+            ));
+        }
+
+        if ($this->connections[$handle] instanceof Closure) {
+            $this->connections[$handle] = $this->connections[$handle]();
+        }
+
+        if ( ! $this->connections[$handle] instanceof \PDO) {
+            throw new \PDOException(sprintf(
                 'Invalid handle: %s',
                 $handle
             ));
@@ -198,11 +203,11 @@ class Database
         $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
-        /* @var PDOStatement $sth */
-        $sth = $this->connections[$handle]()->prepare($statement);
+        /* @var \PDOStatement $sth */
+        $sth = $this->connections[$handle]->prepare($statement);
         $sth->execute($params);
 
-        return $sth->fetchAll(PDO::FETCH_ASSOC);
+        return $sth->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -219,8 +224,8 @@ class Database
         $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
-        /* @var PDOStatement $sth */
-        $sth = $this->connections[$handle]()->prepare($statement);
+        /* @var \PDOStatement $sth */
+        $sth = $this->connections[$handle]->prepare($statement);
         $sth->execute($params);
     }
 
@@ -236,7 +241,7 @@ class Database
         $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
-        return (int) $this->connections[$handle]()->lastInsertId();
+        return (int) $this->connections[$handle]->lastInsertId();
     }
 
     /**
@@ -253,7 +258,7 @@ class Database
         $handle = (is_null($handle) ? $this->defaultHandle : $handle);
         $this->testHandle($handle);
 
-        return $this->connections[$handle]()->setAttribute($attribute, $value);
+        return $this->connections[$handle]->setAttribute($attribute, $value);
     }
 
     /**
@@ -265,7 +270,7 @@ class Database
      */
     public function useMockDriver($mock)
     {
-        if ($mock instanceof PDO) {
+        if ($mock instanceof \PDO) {
             $this->mockDriver = $mock;
         }
     }
