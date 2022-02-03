@@ -112,6 +112,21 @@ var_dump($lastId);
 
 Again, if the handle is left out, it will use whatever your default handle is set to.
 
+## Fetching the number of rows affected by the previous query
+If you've just updated / inserted / deleted one or more rows in your database, you can get the count
+of rows affected by using:
+
+```
+$rowCount = $database->getRows('prod');
+
+var_dump($rowCount);
+
+// int(23456)
+```
+
+Similar to `getLastInsertId()`, if you leave out the handle, it will use whatever your default
+handle is set to.
+
 ## Setting Attributes
 You can set PDO attributes on a given connection via the setAttribute method.  This works identically
 to the PDO setAttribute method, with the exception that a handle is also passed:
