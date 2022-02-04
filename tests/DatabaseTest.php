@@ -5,15 +5,11 @@ namespace Elbucho\Database\Tests;
 use Elbucho\Config\InvalidFileException;
 use Elbucho\Config\Loader\File\IniFileLoader;
 use Elbucho\Database\InvalidConfigException;
+use PDO;
+use PDOException;
 use PHPUnit\Framework\TestCase;
 use Elbucho\Database\Database;
 use Elbucho\Config\Config;
-
-class PDOMock extends \PDO {
-    /** @noinspection PhpMissingParentConstructorInspection */
-    public function __construct($dsn, $username = null, $passwd = null, $options = null) {
-    }
-}
 
 class DatabaseTest extends TestCase
 {
@@ -60,34 +56,39 @@ class DatabaseTest extends TestCase
      * @throws  InvalidFileException
      * @throws  InvalidConfigException
      */
-    public function setup()
+    public function setup(): void
     {
         $loader = new IniFileLoader();
         $config = new Config(
             $loader->load(self::CONFIG_DIR . DIRECTORY_SEPARATOR . 'database.ini')
         );
 
-        $PDOMock = $this->getMockBuilder('Elbucho\Database\Tests\PDOMock')
-            ->setConstructorArgs(['mysql:hostname=localhost;dbname=test;charset=utf8'])
-            ->setMethods(['prepare', 'lastInsertId', 'setAttribute'])
+        $PDOStatement = $this->getMockBuilder('stdClass')
+            ->addMethods(['execute', 'fetchAll', 'rowCount'])
             ->getMock();
 
-        $PDOStatement = $this->getMockBuilder('\PDOStatement')
-            ->setMethods(['execute', 'fetchAll'])
-            ->getMock();
-        $PDOStatement->expects($this->any())
-            ->method('execute')
+        $PDOStatement->method('execute')
             ->will(
                 $this->returnCallback(function ($arguments) {
                     $this->lastExecuteArguments = $arguments;
                 })
             );
-        $PDOStatement->expects($this->any())
-            ->method('fetchAll')
+
+        $PDOStatement->method('fetchAll')
             ->will($this->returnCallback(array($this, 'fetchAllHelper')));
 
+        $PDOStatement->method('rowCount')
+            ->will(
+                $this->returnCallback(function () {
+                    return rand(0, 15);
+                })
+            );
+
+        $PDOMock = $this->getMockBuilder('stdClass')
+            ->addMethods(['prepare', 'lastInsertId', 'setAttribute'])
+            ->getMock();
+
         $PDOMock
-            ->expects($this->any())
             ->method('prepare')
             ->will(
                 $this->returnCallback(function ($query) use ($PDOStatement) {
@@ -97,7 +98,6 @@ class DatabaseTest extends TestCase
             );
 
         $PDOMock
-            ->expects($this->any())
             ->method('lastInsertId')
             ->will(
                 $this->returnCallback(function () {
@@ -106,7 +106,6 @@ class DatabaseTest extends TestCase
             );
 
         $PDOMock
-            ->expects($this->any())
             ->method('setAttribute')
             ->willReturn(true);
 
@@ -121,7 +120,8 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testConnections() {
+    public function testConnections(): void
+    {
         $this->setFetchAllReturnValue(['test1']);
 
         $response = $this->database->query(
@@ -130,7 +130,13 @@ class DatabaseTest extends TestCase
             'test1'
         );
 
-        $this->assertEquals(['test1'], $response);
+        $databases = [];
+
+        foreach ($response as $value) {
+            $databases[] = $value['Database'];
+        }
+
+        $this->assertTrue(in_array('test1', $databases));
 
         $this->setFetchAllReturnValue(['test2']);
 
@@ -140,7 +146,13 @@ class DatabaseTest extends TestCase
             'test2'
         );
 
-        $this->assertEquals(['test2'], $response);
+        $databases = [];
+
+        foreach ($response as $value) {
+            $databases[] = $value['Database'];
+        }
+
+        $this->assertTrue(in_array('test2', $databases));
     }
 
     /**
@@ -150,7 +162,8 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testInvalidConnection() {
+    public function testInvalidConnection(): void
+    {
         $error = false;
 
         try {
@@ -159,7 +172,7 @@ class DatabaseTest extends TestCase
                 [],
                 'invalidConnection'
             );
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             $error = true;
         }
 
@@ -173,7 +186,7 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testInvalidConfigFile()
+    public function testInvalidConfigFile(): void
     {
         $invalidConfig = array(
             'host'  => 'localhost',
@@ -198,7 +211,7 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testEmptyConfigFile()
+    public function testEmptyConfigFile(): void
     {
         $emptyConfig = [];
 
@@ -220,7 +233,7 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testDuplicateConfigFile()
+    public function testDuplicateConfigFile(): void
     {
         $duplicateConfig = [
             'host'      => 'localhost',
@@ -250,19 +263,25 @@ class DatabaseTest extends TestCase
      */
     public function testExec()
     {
-        $error = false;
-
         try {
             $this->database->exec(
                 'SET NAMES=utf8',
                 [],
                 'test1'
             );
-        } catch (\PDOException $e) {
-            $this->fail($e->getMessage());
+        } catch (PDOException $e) {
+            try {
+                $this->database->exec(
+                    'SET NAMES "utf8"',
+                    [],
+                    'test1'
+                );
+            } catch (PDOException $e) {
+                $this->fail($e->getMessage());
+            }
         }
 
-        $this->assertFalse($error);
+        $this->assertTrue(true);
     }
 
     /**
@@ -272,19 +291,37 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testLastInsertId()
+    public function testLastInsertId(): void
     {
-        $error = false;
-
         try {
             $lastId = $this->database->getLastInsertId('test1');
 
             $this->assertIsInt($lastId);
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             $this->fail($e->getMessage());
         }
 
-        $this->assertFalse($error);
+        $this->assertTrue(true);
+    }
+
+    /**
+     * Test the getRows command
+     *
+     * @access  public
+     * @param   void
+     * @return  void
+     */
+    public function testGetRows(): void
+    {
+        try {
+            $rows = $this->database->getRows('test1');
+
+            $this->assertIsInt($rows);
+        } catch (PDOException $e) {
+            $this->fail($e->getMessage());
+        }
+
+        $this->assertTrue(true);
     }
 
     /**
@@ -294,12 +331,12 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  void
      */
-    public function testSetAttribute()
+    public function testSetAttribute(): void
     {
         $this->assertTrue(
             $this->database->setAttribute(
-                \PDO::ATTR_ERRMODE,
-                \PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_ERRMODE,
+                PDO::ERRMODE_EXCEPTION,
                 'test1'
             )
         );
@@ -312,7 +349,7 @@ class DatabaseTest extends TestCase
      * @param   array   $return
      * @return  void
      */
-    protected function setFetchAllReturnValue(array $return)
+    protected function setFetchAllReturnValue(array $return): void
     {
         $this->fetchAllReturnValue = $return;
     }
@@ -324,7 +361,7 @@ class DatabaseTest extends TestCase
      * @param   void
      * @return  array
      */
-    public function fetchAllHelper()
+    public function fetchAllHelper(): array
     {
         if ( ! is_array($this->fetchAllReturnValue)) {
             return [];
