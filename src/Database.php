@@ -129,7 +129,7 @@ class Database
 
         $port = (isset($config->{'port'})) ? ';port=' . $config->{'port'} : '';
         $dsn = sprintf(
-            'mysql:hostname=%s;dbname=%s%s;charset=utf8',
+            'mysql:host=%s;dbname=%s%s;charset=utf8',
             $config->{'host'},
             $config->{'dbname'},
             $port
